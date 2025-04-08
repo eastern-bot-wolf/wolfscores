@@ -25,7 +25,7 @@ def get_latest_game(team_id):
     return games[0] if games else None
 
 def get_community_id(auth_headers):
-    resp = requests.get(f"{LEMMY_INSTANCE}/api/v3/community?name=timberwolves", headers=auth_headers)
+    resp = requests.get(f"{LEMMY_INSTANCE}/api/v3/community?name=timberwolves@lemmy.world", headers=auth_headers)
     return resp.json()["community_view"]["community"]["id"]
 
 def post_to_lemmy(title, body):
