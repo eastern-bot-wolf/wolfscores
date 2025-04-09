@@ -71,13 +71,14 @@ try:
 
     # Login to Lemmy
     login_resp = requests.post(f"https://{COMMUNITY_INSTANCE}/api/v3/user/login", json={
-        "username_or_email": username,
-        "password": password
-    }, headers=HEADERS)
-
+    "username_or_email": username,
+    "password": password
+}, headers=HEADERS)
+    
     login_data = login_resp.json()
     jwt = login_data["jwt"]
 
+    print("Login response:", login_data)
     print("✅ Logged in!")
 
     # Get community ID
