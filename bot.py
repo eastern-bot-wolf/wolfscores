@@ -4,10 +4,10 @@ import json
 
 # CONFIG - set your team info here
 TEAM_NAME = "Minnesota Timberwolves"
-LEMMY_INSTANCE = "https://lemmy.world"
+LEMMY_INSTANCE = "https://midwest.social"
 COMMUNITY_ID = 12345  # <-- We'll replace this below
-USERNAME = "your_bot_username"
-PASSWORD = "your_bot_password"
+USERNAME = os.environ["LEMMY_USER"]
+PASSWORD = os.environ["LEMMY_PASS"]
 
 def get_team_id():
     response = requests.get("https://www.balldontlie.io/api/v1/teams")
