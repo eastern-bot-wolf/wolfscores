@@ -1,72 +1,161 @@
-import requests
-from datetime import date
-import json
-
-# CONFIG - set your team info here
-TEAM_NAME = "Minnesota Timberwolves"
-LEMMY_INSTANCE = "https://midwest.social"
-COMMUNITY_ID = 12345  # <-- We'll replace this below
 import os
-USERNAME = os.environ.get("USERNAME")
-PASSWORD = os.environ.get("PASSWORD")
+import requests
+from datetime import datetime
+import time
 
-def get_team_id():
-    response = requests.get("https://www.balldontlie.io/api/v1/teams")
-    teams = response.json()["data"]
-    for team in teams:
-        if team["full_name"] == TEAM_NAME:
-            return team["id"]
-    return None
+# Basic info
+TEAM_NAME = "Timberwolves"
+TEAM_ABBREV = "MIN"
+COMMUNITY_NAME = "timberwolves"
+COMMUNITY_INSTANCE = "lemmy.world"
+
+# Get secrets from GitHub
+username = os.environ["USERNAME"]
+password = os.environ["PASSWORD"]
+
+# API headers
+HEADERS = {"Content-Type": "application/json"}
+
 
 def get_latest_game(team_id):
-    today = date.today()
-    url = f"https://www.balldontlie.io/api/v1/games?team_ids[]={team_id}&per_page=1&end_date={today}"
-    response = requests.get(url)
-    games = response.json()["data"]
-    return games[0] if games else None
+    today = datetime.today().strftime("%Y-%m-%d")
+    url = f"https://www.balldontlie.io/api/v1/games?team_ids[]={team_id}&end_date={today}&per_page=1&sort=-date"
+    resp = requests.get(url)
+    game = resp.json()["data"][0]
+    return game
 
-def get_community_id(auth_headers):
-    resp = requests.get(f"{LEMMY_INSTANCE}/api/v3/community?name=timberwolves@lemmy.world", headers=auth_headers)
-    return resp.json()["community_view"]["community"]["id"]
 
-def post_to_lemmy(title, body):
-    # Log in
-    login_resp = requests.post(f"{LEMMY_INSTANCE}/api/v3/user/login", json={
-        "username_or_email": USERNAME,
-        "password": PASSWORD
-    })
-    jwt = login_resp.json()["jwt"]
-    auth_headers = {"Authorization": f"Bearer {jwt}"}
+def get_box_score(game_id):
+    player_stats = []
+    page = 1
 
-    # Get community ID if needed
-    global COMMUNITY_ID
-    if COMMUNITY_ID == 12345:
-        COMMUNITY_ID = get_community_id(auth_headers)
+    while True:
+        url = f"https://www.balldontlie.io/api/v1/stats?game_ids[]={game_id}&per_page=100&page={page}"
+        resp = requests.get(url)
+        data = resp.json()
+        player_stats += data["data"]
 
-    # Post
-    post_data = {
-        "name": title,
-        "body": body,
-        "community_id": COMMUNITY_ID
-    }
-    response = requests.post(f"{LEMMY_INSTANCE}/api/v3/post", headers=auth_headers, json=post_data)
-    print("Posted:", response.status_code, response.text)
+        if data["meta"]["next_page"] is None:
+            break
+        page += 1
 
-def main():
-    team_id = get_team_id()
+    return player_stats
+
+
+def format_team_box_score(stats, team_abbrev):
+    table = f"### {team_abbrev} Box Score\n\n"
+    table += "| Player | PTS | REB | AST | STL | BLK | FG% |\n"
+    table += "|--------|-----|-----|-----|-----|-----|------|\n"
+
+    for stat in stats:
+        if stat["team"]["abbreviation"] != team_abbrev:
+            continue
+
+        player = f"{stat['player']['first_name']} {stat['player']['last_name']}"
+        pts = stat["pts"]
+        reb = stat["reb"]
+        ast = stat["ast"]
+        stl = stat["stl"]
+        blk = stat["blk"]
+        fga = stat["fga"]
+        fgm = stat["fgm"]
+        fg_pct = round((fgm / fga) * 100, 1) if fga else 0
+
+        table += f"| {player} | {pts} | {reb} | {ast} | {stl} | {blk} | {fg_pct}% |\n"
+
+    return table
+
+
+try:
+    print("🔐 Logging in...")
+
+    # Login to Lemmy
+    login_resp = requests.post(f"https://{COMMUNITY_INSTANCE}/api/v3/user/login", json={
+        "username_or_email": username,
+        "password": password
+    }, headers=HEADERS)
+
+    login_data = login_resp.json()
+    jwt = login_data["jwt"]
+
+    print("✅ Logged in!")
+
+    # Get community ID
+    print("🔍 Looking up community...")
+    community_lookup = requests.get(
+        f"https://{COMMUNITY_INSTANCE}/api/v3/community",
+        params={"name": COMMUNITY_NAME}
+    )
+    community_data = community_lookup.json()
+    community_id = community_data["community_view"]["community"]["id"]
+
+    print(f"✅ Community ID: {community_id}")
+
+    # Get team info
+    print("📡 Fetching latest game info...")
+    team_resp = requests.get("https://www.balldontlie.io/api/v1/teams")
+    teams = team_resp.json()["data"]
+    team_id = next(t["id"] for t in teams if t["abbreviation"] == TEAM_ABBREV)
+
     game = get_latest_game(team_id)
+    game_id = game["id"]
+    home_team = game["home_team"]
+    visitor_team = game["visitor_team"]
 
-    if not game or not game["status"].startswith("Final"):
-        print("No completed game found.")
-        return
-
-    home = game["home_team"]["full_name"]
-    away = game["visitor_team"]["full_name"]
     home_score = game["home_team_score"]
-    away_score = game["visitor_team_score"]
+    visitor_score = game["visitor_team_score"]
 
-    title = f"Final: {away} {away_score} - {home_score} {home}"
-    body = f"Game finished on {game['date'][:10]}\n\nFinal score:\n\n{away}: {away_score}\n{home}: {home_score}"
-    post_to_lemmy(title, body)
+    if home_team["abbreviation"] == TEAM_ABBREV:
+        opponent_abbrev = visitor_team["abbreviation"]
+        team_score = home_score
+        opponent_score = visitor_score
+    else:
+        opponent_abbrev = home_team["abbreviation"]
+        team_score = visitor_score
+        opponent_score = home_score
 
-main()
+    title = f"Final: {TEAM_ABBREV} {team_score}, {opponent_abbrev} {opponent_score}"
+
+    print("📊 Fetching box scores...")
+    stats = get_box_score(game_id)
+    wolves_table = format_team_box_score(stats, TEAM_ABBREV)
+    opponent_table = format_team_box_score(stats, opponent_abbrev)
+
+    body_text = f"""\
+**Final Score**  
+**{TEAM_ABBREV}** {team_score}  
+**{opponent_abbrev}** {opponent_score}
+
+---
+
+{wolves_table}
+
+---
+
+{opponent_table}
+
+---
+
+_This post was generated by eastern_bot_wolf 🐺_
+"""
+
+    print("📬 Posting to Lemmy...")
+    post_resp = requests.post(
+        f"https://{COMMUNITY_INSTANCE}/api/v3/post",
+        headers={"Authorization": f"Bearer {jwt}"},
+        json={
+            "name": title,
+            "community_id": community_id,
+            "body": body_text,
+        }
+    )
+
+    if post_resp.status_code == 200:
+        print("✅ Post published successfully!")
+    else:
+        print(f"❌ Post failed with status code {post_resp.status_code}")
+        print(post_resp.text)
+
+except Exception as e:
+    print("❗ An error occurred:")
+    print(e)
