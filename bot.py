@@ -6,8 +6,8 @@ import time
 # Basic info
 TEAM_NAME = "Timberwolves"
 TEAM_ABBREV = "MIN"
-COMMUNITY_NAME = "timberwolves"
-COMMUNITY_INSTANCE = "lemmy.world"
+COMMUNITY_NAME = "timberwolves@lemmy.world"
+COMMUNITY_INSTANCE = "midwest.social"
 
 # Get secrets from GitHub
 username = os.environ["USERNAME"]
@@ -78,7 +78,13 @@ try:
     login_data = login_resp.json()
     jwt = login_data["jwt"]
 
-    print("Login response:", login_data)
+    print("Login response:", login_resp.text)  # <-- log raw text response for easier debugging
+    
+    login_data = login_resp.json()
+    if "jwt" not in login_data:
+        raise Exception(f"Login failed! Response: {login_data}")
+    jwt = login_data["jwt"]
+
     print("✅ Logged in!")
 
     # Get community ID
