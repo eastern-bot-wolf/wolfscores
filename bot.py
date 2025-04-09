@@ -6,8 +6,9 @@ import json
 TEAM_NAME = "Minnesota Timberwolves"
 LEMMY_INSTANCE = "https://midwest.social"
 COMMUNITY_ID = 12345  # <-- We'll replace this below
-USERNAME = os.environ["USERNAME"]
-PASSWORD = os.environ["PASSWORD"]
+import os
+USERNAME = os.environ.get("USERNAME")
+PASSWORD = os.environ.get("PASSWORD")
 
 def get_team_id():
     response = requests.get("https://www.balldontlie.io/api/v1/teams")
