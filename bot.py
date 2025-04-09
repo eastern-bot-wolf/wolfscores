@@ -16,7 +16,6 @@ password = os.environ["PASSWORD"]
 # API headers
 HEADERS = {"Content-Type": "application/json"}
 
-
 def get_latest_game(team_id):
     today = datetime.today().strftime("%Y-%m-%d")
     url = f"https://www.balldontlie.io/api/v1/games?team_ids[]={team_id}&end_date={today}&per_page=1&sort=-date"
@@ -24,6 +23,13 @@ def get_latest_game(team_id):
     print("Game API URL:", url)
 
     resp = requests.get(url)
+    
+    # Check if the request was successful
+    if resp.status_code != 200:
+        raise Exception(f"Failed request: {resp.status_code}. Response: {resp.text}")
+    
+    # Log the raw response for debugging
+    print("Raw response from API:", resp.text)
     
     try:
         data = resp.json()["data"]
