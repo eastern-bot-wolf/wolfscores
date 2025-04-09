@@ -20,6 +20,9 @@ HEADERS = {"Content-Type": "application/json"}
 def get_latest_game(team_id):
     today = datetime.today().strftime("%Y-%m-%d")
     url = f"https://www.balldontlie.io/api/v1/games?team_ids[]={team_id}&end_date={today}&per_page=1&sort=-date"
+    
+    print("Game API URL:", url)
+
     resp = requests.get(url)
     
     try:
@@ -29,9 +32,6 @@ def get_latest_game(team_id):
         return data[0]
     except Exception as e:
         raise Exception(f"Failed to get latest game. Raw response: {resp.text}") from e
-
-print("Game API URL:", url)
-
 
 
 def get_box_score(game_id):
