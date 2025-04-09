@@ -21,8 +21,17 @@ def get_latest_game(team_id):
     today = datetime.today().strftime("%Y-%m-%d")
     url = f"https://www.balldontlie.io/api/v1/games?team_ids[]={team_id}&end_date={today}&per_page=1&sort=-date"
     resp = requests.get(url)
-    game = resp.json()["data"][0]
-    return game
+    
+    try:
+        data = resp.json()["data"]
+        if not data:
+            raise Exception("No game data returned. Maybe the team hasn't played recently?")
+        return data[0]
+    except Exception as e:
+        raise Exception(f"Failed to get latest game. Raw response: {resp.text}") from e
+
+print("Game API URL:", url)
+
 
 
 def get_box_score(game_id):
