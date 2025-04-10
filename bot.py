@@ -12,9 +12,30 @@ COMMUNITY_INSTANCE = "midwest.social"
 # Get secrets from GitHub
 username = os.environ["USERNAME"]
 password = os.environ["PASSWORD"]
+api_key = os.environ["BALLDONTLIE_API_KEY"]
 
 # API headers
-HEADERS = {"Content-Type": "application/json"}
+HEADERS = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {api_key}"
+}
+
+def get_latest_game(team_id):
+    today = datetime.today().strftime("%Y-%m-%d")
+    url = f"https://www.balldontlie.io/api/v1/games?team_ids[]={team_id}&end_date={today}&per_page=1&sort=-date"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    resp = requests.get(url, headers=headers)
+    
+    try:
+        data = resp.json()["data"]
+        if not data:
+            raise Exception("No game data returned. Maybe the team hasn't played recently?")
+        return data[0]
+    except Exception as e:
+        raise Exception(f"Failed to get latest game. Raw response: {resp.text}") from e
 
 def get_latest_game(team_id):
     today = datetime.today().strftime("%Y-%m-%d")
