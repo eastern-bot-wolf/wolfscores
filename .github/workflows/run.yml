@@ -20,6 +20,7 @@ jobs:
         env:
           USERNAME: ${{ secrets.LEMMY_USER }}
           PASSWORD: ${{ secrets.LEMMY_PASS }}
+          BALLDONTLIE_API_KEY: ${{ secrets.BALLDONTLIE_API_KEY }}
         run: |
           echo "USERNAME = '${{ env.USERNAME }}'" >> bot.py
           echo "PASSWORD = '${{ env.PASSWORD }}'" >> bot.py
