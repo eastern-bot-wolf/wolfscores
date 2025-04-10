@@ -137,6 +137,9 @@ try:
     # Get team info
     print("📡 Fetching latest game info...")
     team_resp = requests.get("https://www.balldontlie.io/api/v1/teams")
+
+    print("🧪 Team API response text:", team_resp.text)
+    
     teams = team_resp.json()["data"]
     team_id = next(t["id"] for t in teams if t["abbreviation"] == TEAM_ABBREV)
 
